@@ -29,6 +29,18 @@ class BusinessConfig:
             self.required_fields = self._get_default_required_fields()
         if not self.optional_fields:
             self.optional_fields = self._get_default_optional_fields()
+
+    def get_greeting(self) -> str:
+        """Generate business-appropriate greeting"""
+        greetings = {
+            "dentist": f"Good afternoon, you've reached {self.business_name}. My name is {self.assistant_name}, how can I help you?",
+            "salon": f"Hello! Welcome to {self.business_name}. This is {self.assistant_name}, how can I assist you today?",
+            "doctor": f"Thank you for calling {self.business_name}. This is {self.assistant_name}, how may I help you?",
+            "spa": f"Welcome to {self.business_name}. I'm {self.assistant_name}, how can I help you today?",
+            "lawyer": f"Good day, you've reached {self.business_name}. This is {self.assistant_name}, how may I assist you?",
+            "generic": f"Hello, you've reached {self.business_name}. I'm {self.assistant_name}, how can I help you?"
+        }
+        return greetings.get(self.business_type, greetings["generic"])
     
     def _get_default_required_fields(self) -> List[str]:
         """Get default required fields based on business type"""

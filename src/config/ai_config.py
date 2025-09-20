@@ -17,7 +17,7 @@ class MistralConfig:
         
         # Initialize Mistral client (your working code)
         self.client = Mistral(api_key=self.api_key)
-        self.model = "mistral-small-latest"  # Using the model from your working example
+        self.model = "mistral-small-latest" 
         self.temperature = 0.3
         self.max_tokens = 1000
     
