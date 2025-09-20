@@ -77,6 +77,15 @@ class GoogleCalendarIntegration:
             if not working_hours:
                 return []
             
+            # Check if date is in the past
+            from datetime import datetime, date as dt_date
+            requested_date = datetime.strptime(date, '%Y-%m-%d').date()
+            today = datetime.now().date()
+            
+            if requested_date < today:
+                print(f"⚠️ Requested date {date} is in the past")
+                return []
+            
             # Parse working hours
             start_hour, end_hour = working_hours.split('-')
             tz = pytz.timezone(timezone)
@@ -92,8 +101,21 @@ class GoogleCalendarIntegration:
                 datetime.strptime(end_hour, '%H:%M').time()
             ))
             
+            # If it's today, don't allow appointments in the past
+            if requested_date == today:
+                current_time = datetime.now(tz)
+                if start_time < current_time:
+                    # Round up to next hour
+                    next_hour = current_time.replace(minute=0, second=0, microsecond=0) + timedelta(hours=1)
+                    if next_hour < end_time:
+                        start_time = next_hour
+                    else:
+                        return []  # No available slots today
+            
             # Get existing events for the day
             events = self._get_events_for_date(date, timezone)
+            
+            print(f"Found {len(events)} existing appointments for {date}")
             
             # Generate available slots
             available_slots = []
@@ -108,9 +130,10 @@ class GoogleCalendarIntegration:
                     event_start = event['start']
                     event_end = event['end']
                     
-                    # Check for overlap
+                    # Check for overlap (more strict checking)
                     if (current_time < event_end and slot_end > event_start):
                         is_available = False
+                        print(f"Slot {current_time.strftime('%H:%M')}-{slot_end.strftime('%H:%M')} conflicts with existing appointment")
                         break
                 
                 if is_available:
@@ -119,6 +142,7 @@ class GoogleCalendarIntegration:
                 
                 current_time += timedelta(minutes=duration_minutes)
             
+            print(f"Found {len(available_slots)} available slots for {date}")
             return available_slots
             
         except Exception as e:
@@ -189,8 +213,27 @@ class GoogleCalendarIntegration:
             Dictionary with booking result
         """
         try:
+            # Validate date is not in the past
+            from datetime import datetime, date as dt_date
+            requested_date = datetime.strptime(date, '%Y-%m-%d').date()
+            today = datetime.now().date()
+            
+            if requested_date < today:
+                return {
+                    'success': False,
+                    'error': f'Cannot book appointments in the past. Requested: {date}, Today: {today}',
+                    'message': 'Please select a future date'
+                }
+            
             # Parse time slot
-            start_time_str, end_time_str = time_slot.split('-')
+            try:
+                start_time_str, end_time_str = time_slot.split('-')
+            except ValueError:
+                return {
+                    'success': False,
+                    'error': f'Invalid time slot format: {time_slot}. Expected: HH:MM-HH:MM',
+                    'message': 'Invalid time format'
+                }
             
             tz = pytz.timezone(timezone)
             date_obj = datetime.strptime(date, '%Y-%m-%d')
@@ -205,13 +248,25 @@ class GoogleCalendarIntegration:
                 datetime.strptime(end_time_str, '%H:%M').time()
             ))
             
+            # Double-check slot is still available before booking
+            duration = int((end_dt - start_dt).total_seconds() / 60)
+            available_slots = self.get_available_slots(date, "09:00-17:00", duration, timezone)
+            
+            if time_slot not in available_slots:
+                return {
+                    'success': False,
+                    'error': f'Time slot {time_slot} is no longer available',
+                    'message': 'This time slot has been taken. Please choose another time.',
+                    'available_slots': available_slots
+                }
+            
             # Create event summary
-            customer_name = customer_info.get('name', 'Unknown')
+            customer_name = customer_info.get('name', 'Unknown Customer')
             if not summary:
                 summary = f"Appointment - {customer_name}"
             
             # Create event description
-            description_parts = []
+            description_parts = [f"Customer: {customer_name}"]
             for key, value in customer_info.items():
                 if value and key != 'name':
                     description_parts.append(f"{key.replace('_', ' ').title()}: {value}")
@@ -233,7 +288,16 @@ class GoogleCalendarIntegration:
                 'attendees': [
                     {'email': customer_info.get('email', '')},
                 ] if customer_info.get('email') else [],
+                'reminders': {
+                    'useDefault': False,
+                    'overrides': [
+                        {'method': 'email', 'minutes': 24 * 60},
+                        {'method': 'popup', 'minutes': 30},
+                    ],
+                },
             }
+            
+            print(f"Booking appointment: {summary} on {date} from {time_slot}")
             
             # Insert event into calendar
             created_event = self.service.events().insert(
@@ -241,11 +305,13 @@ class GoogleCalendarIntegration:
                 body=event
             ).execute()
             
+            print(f"✅ Appointment booked successfully! Event ID: {created_event['id']}")
+            
             return {
                 'success': True,
                 'event_id': created_event['id'],
                 'event_link': created_event.get('htmlLink', ''),
-                'message': f"Appointment booked successfully for {customer_name}",
+                'message': f"Appointment confirmed for {customer_name} on {date} from {time_slot}",
                 'details': {
                     'date': date,
                     'time': time_slot,
@@ -255,15 +321,19 @@ class GoogleCalendarIntegration:
             }
             
         except HttpError as e:
+            error_msg = f"Google Calendar error: {e}"
+            print(f"❌ {error_msg}")
             return {
                 'success': False,
-                'error': f"Google Calendar error: {e}",
-                'message': "Failed to book appointment"
+                'error': error_msg,
+                'message': "Failed to book appointment due to calendar service error"
             }
         except Exception as e:
+            error_msg = f"Booking error: {e}"
+            print(f"❌ {error_msg}")
             return {
                 'success': False, 
-                'error': f"Booking error: {e}",
+                'error': error_msg,
                 'message': "Failed to book appointment"
             }
     

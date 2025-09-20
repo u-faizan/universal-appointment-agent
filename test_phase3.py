@@ -74,7 +74,70 @@ async def test_conversation_flow():
     except Exception as e:
         print(f"❌ Conversation flow test failed: {e}")
         return False
-
+    
+async def test_real_booking():
+    """Test real appointment booking (no cleanup)"""
+    print("\nTesting Real Appointment Booking...")
+    
+    try:
+        config = create_dental_config("Test Dental Clinic")
+        agent = UniversalAppointmentAgent(config)
+        
+        # Get tomorrow's date
+        from datetime import datetime, timedelta
+        tomorrow = (datetime.now() + timedelta(days=1)).strftime('%Y-%m-%d')
+        
+        # Get available slots
+        slots = agent.calendar.get_available_slots(tomorrow, "09:00-17:00", 60)
+        
+        if not slots:
+            print(f"⚠️ No available slots found for {tomorrow}")
+            return True
+        
+        print(f"Available slots for {tomorrow}: {slots[:3]}")
+        
+        # Book a real test appointment (don't cancel)
+        test_customer = {
+            'name': 'Test Customer',
+            'phone': '555-TEST-123',
+            'date_of_birth': '1990-06-15',
+            'notes': 'Real test booking - Phase 3'
+        }
+        
+        booking_result = agent.calendar.book_appointment(
+            date=tomorrow,
+            time_slot=slots[0],
+            customer_info=test_customer,
+            summary="Phase 3 Real Test Appointment"
+        )
+        
+        if booking_result['success']:
+            print(f"✅ Real appointment booked successfully!")
+            print(f"   Date: {tomorrow}")
+            print(f"   Time: {slots[0]}")
+            print(f"   Event ID: {booking_result['event_id']}")
+            print(f"   Link: {booking_result['event_link']}")
+            
+            # Store in sheets
+            if agent.sheets:
+                agent.sheets.store_customer_data(test_customer, {
+                    'date': tomorrow,
+                    'time': slots[0]
+                })
+                print("✅ Customer data stored in Google Sheets")
+            
+            print("📅 Check your Google Calendar to see the appointment!")
+            
+        else:
+            print(f"❌ Real booking failed: {booking_result.get('error', 'Unknown error')}")
+            return False
+        
+        return True
+        
+    except Exception as e:
+        print(f"❌ Real booking test failed: {e}")
+        return False
+    
 async def test_datetime_parsing():
     """Test date and time parsing"""
     print("\nTesting DateTime Parsing...")
@@ -216,6 +279,7 @@ async def main():
         # Test complete flow
         if agent and mistral_ok:
             flow_ok = await test_conversation_flow()
+            booking_ok = await test_real_booking()
         else:
             print("\n⚠️ Skipping conversation flow test due to missing components")
             flow_ok = False

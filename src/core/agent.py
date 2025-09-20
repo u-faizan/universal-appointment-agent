@@ -193,7 +193,21 @@ Instructions:
     def _should_book_appointment(self, context: ConversationContext, response: str) -> bool:
         """Determine if appointment should be booked"""
         
-        # Check all conditions for booking
+        # Validate date is not in the past
+        if context.requested_date:
+            from datetime import datetime
+            try:
+                requested_date = datetime.strptime(context.requested_date, '%Y-%m-%d').date()
+                today = datetime.now().date()
+                
+                if requested_date < today:
+                    print(f"⚠️ Blocking booking for past date: {context.requested_date}")
+                    return False
+            except ValueError:
+                print(f"⚠️ Invalid date format: {context.requested_date}")
+                return False
+        
+        # Check all other conditions for booking
         has_slot = context.selected_slot is not None
         has_all_info = context.is_info_complete()
         not_already_booked = not context.appointment_booked
@@ -202,7 +216,7 @@ Instructions:
         recent_messages = [msg['content'].lower() for msg in context.messages[-2:] if msg['role'] == 'user']
         confirmation_words = ['yes', 'correct', 'confirm', 'book it', 'sounds good', 'perfect', 'right']
         has_confirmation = any(word in ' '.join(recent_messages + [response.lower()]) 
-                              for word in confirmation_words)
+                            for word in confirmation_words)
         
         # Must be in appropriate conversation stage
         appropriate_stage = context.conversation_stage in ['info_collection', 'confirmation']
