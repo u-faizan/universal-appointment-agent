@@ -1,0 +1,66 @@
+# ==============================
+# Python
+# ==============================
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+
+# Build directories
+build/
+dist/
+wheels/
+*.egg-info
+.eggs/
+
+# ==============================
+# Virtual Environments (uv or others)
+# ==============================
+.venv/
+venv/
+ENV/
+env/
+.uv/
+
+# ==============================
+# Environment Files
+# ==============================
+# Actual secret keys and configs should never be committed
+.env
+
+# Keep template/example files for others to set up
+!*.env.example
+
+# ==============================
+# Logs & Debug
+# ==============================
+*.log
+*.pot
+*.pid
+*.tmp
+
+# ==============================
+# IDE & Editor Settings
+# ==============================
+.vscode/
+.idea/
+*.swp
+.DS_Store
+
+# ==============================
+# Jupyter Notebook
+# ==============================
+.ipynb_checkpoints/
+
+# ==============================
+# Testing & Coverage
+# ==============================
+.coverage
+.tox/
+.pytest_cache/
+
+# ==============================
+# System Files
+# ==============================
+Thumbs.db

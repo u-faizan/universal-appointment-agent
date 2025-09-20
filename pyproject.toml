@@ -1,0 +1,21 @@
+[project]
+name = "universal-appointment-agent"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "google-api-python-client>=2.100.0",
+    "google-auth>=2.22.0",
+    "google-auth-httplib2>=0.1.1",
+    "google-auth-oauthlib>=1.0.0",
+    "langchain>=0.1.0",
+    "mcp>=0.1.0",
+    "mistralai>=0.4.0",
+    "openai>=1.0.0",
+    "pydantic>=2.0.0",
+    "pytest>=7.0.0",
+    "python-dateutil>=2.8.0",
+    "python-dotenv>=1.0.0",
+    "pytz>=2023.3",
+]
