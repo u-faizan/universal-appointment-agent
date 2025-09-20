@@ -23,6 +23,12 @@ ENV/
 env/
 .uv/
 
+# Google OAuth credentials
+credentials.json
+token.pickle
+sheets_token.pickle
+
+
 # ==============================
 # Environment Files
 # ==============================
